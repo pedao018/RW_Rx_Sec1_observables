@@ -7,6 +7,10 @@ import java.io.File
 import java.io.FileNotFoundException
 
 fun main(args: Array<String>) {
+    practice2()
+}
+
+fun practice() {
     exampleOf("just") {
         val observable = Observable.just(listOf(1))
     }
@@ -14,6 +18,7 @@ fun main(args: Array<String>) {
         val observable: Observable<Int> =
             Observable.fromIterable(listOf(1, 2, 3))
     }
+
     exampleOf("subscribe") {
         val observable = Observable.just(1, 2, 3)
         observable.subscribe { println(it) }
@@ -103,10 +108,10 @@ fun main(args: Array<String>) {
             // 3
             emitter.onNext("?")
         }.subscribeBy(
-                onNext = { println(it) },
-                onComplete = { println("Completed") },
-                onError = { println("Error") }
-            )
+            onNext = { println(it) },
+            onComplete = { println("Completed") },
+            onError = { println("Error") }
+        )
 
     }
 
@@ -174,6 +179,150 @@ fun main(args: Array<String>) {
         subscriptions.add(subscription)
         subscriptions.dispose()
     }
+}
 
+fun practice2() {
+    exampleOf("just") {
+        val observable = Observable.just(listOf(1))
+        val observable2 = Observable.just(1, 2, 3)
+    }
 
+    exampleOf("fromIterable") {
+        val observable = Observable.fromIterable(listOf(1, 2, 3))
+    }
+
+    exampleOf("subscribe") {
+        val observable = Observable.just(1, 2, 3)
+        val observable2 = Observable.fromIterable(listOf(1, 2, 3))
+        observable.subscribe { println(it) }
+        observable2.subscribe { print(it) }
+    }
+
+    exampleOf("empty") {
+        val observable = Observable.empty<Unit>()
+
+        observable.subscribeBy(
+            onNext = { print(it) },
+            onComplete = { println("Complete") }
+        )
+    }
+
+    exampleOf("never") {
+        val observable = Observable.never<Any>()
+        observable.subscribeBy(
+            onNext = { print(it) },
+            onComplete = { println("Complete") }
+        )
+    }
+
+    exampleOf("range") {
+        val observable = Observable.range(1, 10)
+        observable.subscribe {
+            println("$it")
+        }
+    }
+
+    exampleOf("dispose") {
+        val mostPopular: Observable<String> = Observable.just("A", "B", "C")
+        val subscription = mostPopular.subscribe { println(it) }
+        subscription.dispose()
+    }
+
+    exampleOf("CompositeDisposeable") {
+        val subscriptions = CompositeDisposable()
+        val observable = Observable.just("A", "B", "C")
+        val observable2 = Observable.just(1, 2, 3)
+        val sub1 = observable.subscribe { println(it) }
+        val sub2 = observable2.subscribe { println(it) }
+        subscriptions.add(sub1)
+        subscriptions.add(sub2)
+        subscriptions.dispose()
+    }
+
+    exampleOf("create") {
+        val disposable = CompositeDisposable()
+        val observable = Observable.create<String> { emitter ->
+            emitter.onNext("1")
+            emitter.onNext("2")
+            emitter.onComplete()
+            emitter.onNext("?")
+        }
+        val subscribe = observable.subscribeBy(onNext = { println(it) },
+            onComplete = { println("On Complete") },
+            onError = { println("On Error") })
+    }
+
+    exampleOf("defer") {
+        val compositeDisposable = CompositeDisposable()
+        var flip = false
+        val observable = Observable.defer {
+            flip = !flip
+            if (flip)
+                Observable.just(1, 2, 3)
+            else
+                Observable.just(4, 5, 6)
+        }
+
+        for (i in 0..3) {
+            compositeDisposable.add(
+                observable.subscribe { print(it) }
+            )
+            println()
+        }
+        compositeDisposable.dispose()
+    }
+
+    exampleOf("Single") {
+        val compositeDisposable = CompositeDisposable()
+        fun loadText(fileName: String): Single<String> {
+            return Single.create create@{ emitter ->
+                val file = File(fileName)
+                if (!file.exists()) {
+                    emitter.onError(FileNotFoundException("Can't find $fileName"))
+                    return@create
+                }
+                val contents = file.readText(Charsets.UTF_8)
+                emitter.onSuccess(contents)
+            }
+        }
+
+        val subscribe = loadText("Copyright.txt").subscribeBy(
+            onSuccess = { print(it) },
+            onError = { println("Error, $it") }
+        )
+        compositeDisposable.add(subscribe)
+    }
+
+    exampleOf("Never Challenge") {
+        val compositeDisposable = CompositeDisposable()
+        val observable = Observable.never<Any>()
+        compositeDisposable.add(
+            observable
+                .doOnSubscribe {
+                    println("Never Subscribe")
+                }
+                .subscribeBy(
+                    onNext = { print(it) },
+                    onComplete = { println("Complete") }
+                )
+        )
+        compositeDisposable.dispose()
+    }
+
+    exampleOf("never chanllenge") {
+        val subscriptions = CompositeDisposable()
+        val observable = Observable.never<Any>()
+        val subscription = observable
+            .doOnNext { println(it) }
+            .doOnComplete { println("Completed") }
+            .doOnSubscribe { println("Subscribed") }
+            .doOnDispose { println("Disposed") }
+            .subscribeBy(onNext = {
+                println(it)
+            }, onComplete = {
+                println("Completed")
+            })
+        subscriptions.add(subscription)
+        subscriptions.dispose()
+    }
 }
